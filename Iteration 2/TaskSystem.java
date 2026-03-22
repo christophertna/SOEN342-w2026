@@ -7,7 +7,9 @@ public class TaskSystem {
     private static List<Task> taskDatabase = new ArrayList<>();
 
     public static void main(String[] args) {
-        seedData(); // Populate with some initial tasks
+
+        // initial test data
+        seedData(); 
         Scanner scanner = new Scanner(System.in);
 
         // Main control loop
