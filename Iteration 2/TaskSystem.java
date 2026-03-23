@@ -140,17 +140,9 @@ public class TaskSystem {
     }
 
     private static void importFromCsv(Scanner scanner) {
-        System.out.print("Enter CSV source file path: ");
-        String filePath = scanner.nextLine().trim();
-
-        if (filePath.isEmpty()) {
+        Path sourcePath = promptForCsvPath(scanner, "Enter CSV source file path: ", true);
+        if (sourcePath == null) {
             System.out.println("Import cancelled: a file path is required.");
-            return;
-        }
-
-        Path sourcePath = Paths.get(filePath);
-        if (!Files.exists(sourcePath)) {
-            System.out.println("Import failed: file not found.");
             return;
         }
 
@@ -202,23 +194,17 @@ public class TaskSystem {
             collaboratorsByProject.clear();
             collaboratorsByProject.putAll(importedCollaborators);
             System.out.println("Import complete: " + taskDatabase.size() + " task(s) loaded.");
-        } catch (IOException exception) {
-            System.out.println("Import failed: " + exception.getMessage());
-        } catch (IllegalArgumentException exception) {
+        } catch (IOException | IllegalArgumentException exception) {
             System.out.println("Import failed: " + exception.getMessage());
         }
     }
 
     private static void exportToCsv(Scanner scanner) {
-        System.out.print("Enter destination CSV file path: ");
-        String filePath = scanner.nextLine().trim();
-
-        if (filePath.isEmpty()) {
+        Path destinationPath = promptForCsvPath(scanner, "Enter destination CSV file path: ", false);
+        if (destinationPath == null) {
             System.out.println("Export cancelled: a file path is required.");
             return;
         }
-
-        Path destinationPath = Paths.get(filePath);
 
         try {
             if (destinationPath.getParent() != null) {
@@ -237,6 +223,83 @@ public class TaskSystem {
         } catch (IOException exception) {
             System.out.println("Export failed: " + exception.getMessage());
         }
+    }
+
+    private static Path promptForCsvPath(Scanner scanner, String prompt, boolean mustExist) {
+        while (true) {
+            System.out.print(prompt);
+            String rawInput = scanner.nextLine();
+            String trimmedInput = rawInput.trim();
+
+            if (trimmedInput.isEmpty()) {
+                return null;
+            }
+
+            try {
+                Path parsedPath = parseCsvPath(trimmedInput);
+
+                if (mustExist && !Files.exists(parsedPath)) {
+                    System.out.println("Path not found. Enter a valid CSV file path.");
+                    continue;
+                }
+
+                if (mustExist && !Files.isRegularFile(parsedPath)) {
+                    System.out.println("Path is not a file. Enter a valid CSV file path.");
+                    continue;
+                }
+
+                return parsedPath.normalize();
+            } catch (IllegalArgumentException exception) {
+                System.out.println("Invalid path: " + exception.getMessage());
+            }
+        }
+    }
+
+    private static Path parseCsvPath(String userInput) {
+        String normalizedInput = unwrapQuotedPath(userInput);
+
+        if (normalizedInput.isEmpty()) {
+            throw new IllegalArgumentException("Enter a file path.");
+        }
+
+        if (hasTrailingTextAfterCsvExtension(normalizedInput)) {
+            throw new IllegalArgumentException("Remove extra characters after the .csv path.");
+        }
+
+        return Paths.get(normalizedInput);
+    }
+
+    private static String unwrapQuotedPath(String userInput) {
+        char firstCharacter = userInput.charAt(0);
+        boolean startsWithQuote = firstCharacter == '"' || firstCharacter == '\'';
+
+        if (!startsWithQuote) {
+            return userInput;
+        }
+
+        int closingQuoteIndex = userInput.lastIndexOf(firstCharacter);
+        if (closingQuoteIndex == 0) {
+            throw new IllegalArgumentException("Missing closing quote around the file path.");
+        }
+
+        String trailingText = userInput.substring(closingQuoteIndex + 1).trim();
+        if (!trailingText.isEmpty()) {
+            throw new IllegalArgumentException("Remove extra characters after the closing quote.");
+        }
+
+        return userInput.substring(1, closingQuoteIndex).trim();
+    }
+
+    private static boolean hasTrailingTextAfterCsvExtension(String userInput) {
+        String lowercaseInput = userInput.toLowerCase();
+        int extensionIndex = lowercaseInput.lastIndexOf(".csv");
+
+        if (extensionIndex < 0) {
+            return false;
+        }
+
+        String trailingText = userInput.substring(extensionIndex + 4).trim();
+        return !trailingText.isEmpty();
     }
 
     private static Task buildTaskFromColumns(
