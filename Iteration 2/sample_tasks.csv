@@ -1,0 +1,4 @@
+TaskName,Description,Subtask,Status,Priority,DueDate,ProjectName,ProjectDescription,Collaborator,CollaboratorCategory
+Implement CSV import,Load tasks from a source file,Validate required fields,Pending,High,2026-03-24,Iteration 2,SOEN 342 iteration 2 prototype,Alice,Senior
+Implement CSV export,Write all records to a file,Escape values safely,Pending,Medium,2026-03-25,Iteration 2,SOEN 342 iteration 2 prototype,Bob,Junior
+Review imported tasks,Check generated records,,Completed,Low,2026-03-26,,,,
