@@ -31,37 +31,28 @@ public class TaskSystem {
     private static final Map<String, String> projects = new LinkedHashMap<>();
     private static final Map<String, Map<String, String>> collaboratorsByProject = new LinkedHashMap<>();
 
-    public static void main(String[] args) {
+public static void main(String[] args) {
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
-                System.out.println("\n--- TASK SEARCH SYSTEM ---");
+                System.out.println("\n--- TASK MANAGEMENT SYSTEM (ITERATION III) ---");
                 System.out.println("1. View All Tasks");
                 System.out.println("2. Search Tasks by Criteria");
-                System.out.println("3. Import Tasks from CSV");
-                System.out.println("4. Export All Tasks to CSV");
-                System.out.println("5. Exit");
+                System.out.println("3. View Overloaded Collaborators"); // new option to check overloaded collaborators (to be implemented)
+                System.out.println("4. Export to iCalendar (.ics)");    // New option to export to iCal (to be implemented)
+                System.out.println("5. Import/Export CSV (Legacy)");
+                System.out.println("6. Exit");
                 System.out.print("Select an option: ");
 
                 String choice = scanner.nextLine().trim();
 
                 switch (choice) {
-                    case "1":
-                        viewAllTasks();
-                        break;
-                    case "2":
-                        performSearch(scanner);
-                        break;
-                    case "3":
-                        importFromCsv(scanner);
-                        break;
-                    case "4":
-                        exportToCsv(scanner);
-                        break;
-                    case "5":
-                        System.out.println("Exiting...");
-                        return;
-                    default:
-                        System.out.println("Invalid option. Try again.");
+                    case "1": viewAllTasks(); break;
+                    case "2": performSearch(scanner); break;
+                    case "3": viewOverloadedCollaborators(); break; // new option To be implemented 
+                    case "4": showExportMenu(scanner); break;       // new UI Logic to be implemented
+                    case "5": showLegacyCsvMenu(scanner); break;
+                    case "6": return;
+                    default: System.out.println("Invalid option.");
                 }
             }
         }
@@ -634,9 +625,9 @@ class Task {
     private static void viewOverloadedCollaborators() {
         System.out.println("\n--- OVERLOADED COLLABORATORS ---");
         // Logic will be
-        // 1. Get unique list of collaborators.
-        // 2. For each, check if count of Open Tasks > Limit (Senior=2, etc.)
-        // 3. Print names.
+        // 1- Get unique list of collaborators
+        // 2- For each collaborator, check if count of Open Tasks > Limit ( recall ex: Senior=2 etc.)
+        // 3- Print names
         System.out.println("Feature pending Domain Logic implementation...");
     }
 }
