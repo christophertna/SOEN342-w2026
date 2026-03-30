@@ -583,4 +583,60 @@ class Task {
     private String blankWhenMissing(String value) {
         return value == null ? "" : value;
     }
+
+     // NEW IMPLEMENTATION BELOW
+     // UI for the iCalendar Export feature.
+     //This coordinates which tasks get sent to the Gateway.
+     
+    private static void showExportMenu(Scanner scanner) {
+        System.out.println("\n--- iCALENDAR EXPORT ---");
+        System.out.println("1. Export a Single Task");
+        System.out.println("2. Export All Tasks in a Project");
+        System.out.println("3. Export Filtered Tasks (Current Search)");
+        System.out.print("Choice: ");
+        
+        String subChoice = scanner.nextLine().trim();
+        List<Task> toExport = new ArrayList<>();
+
+        switch (subChoice) {
+            case "1":
+                System.out.print("Enter Task ID: ");
+                int id = Integer.parseInt(scanner.nextLine());
+                taskDatabase.stream().filter(t -> t.getId() == id).findFirst().ifPresent(toExport::add);
+                break;
+            case "2":
+                System.out.print("Enter Project Name: ");
+                String proj = scanner.nextLine().trim();
+                toExport = taskDatabase.stream()
+                        .filter(t -> t.getProjectName().equalsIgnoreCase(proj))
+                        .collect(Collectors.toList());
+                break;
+            case "3":
+                //Should use existing search method but redirects the output
+                toExport = performSearchAndReturnList(scanner); 
+                break;
+        }
+
+        if (toExport.isEmpty()) {
+            System.out.println("No eligible tasks found for export.");
+            return;
+        }
+
+        // Pass to the Gateway (to be implemented)
+        System.out.print("Enter destination filename (e.g., tasks.ics): ");
+        String filename = scanner.nextLine().trim();
+        
+        // Mock call to the Gateway
+        // iCalGateway.export(toExport, filename); 
+        System.out.println("Handing off " + toExport.size() + " tasks to the iCal Gateway...");
+    }
+
+    private static void viewOverloadedCollaborators() {
+        System.out.println("\n--- OVERLOADED COLLABORATORS ---");
+        // Logic will be
+        // 1. Get unique list of collaborators.
+        // 2. For each, check if count of Open Tasks > Limit (Senior=2, etc.)
+        // 3. Print names.
+        System.out.println("Feature pending Domain Logic implementation...");
+    }
 }
