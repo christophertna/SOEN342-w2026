@@ -139,7 +139,7 @@ public class CsvTaskRepository implements TaskRepository {
         }
     }
 
-    // Private — row building (relocated from TaskSystem)
+    // (PRIVATE) Row building (relocated from TaskSystem)
 
     private Task buildTaskFromColumns(
         List<String> columns,
@@ -226,7 +226,7 @@ public class CsvTaskRepository implements TaskRepository {
     }
 
 
-    // Private — CSV parsing stuff (relocated from TaskSystem)
+    // (Private) CSV parsing stuff (relocated from TaskSystem)
 
     private boolean isHeaderRow(List<String> columns) {
         return columns.size() == CSV_HEADERS.length
@@ -279,7 +279,7 @@ public class CsvTaskRepository implements TaskRepository {
         return "\"" + safe.replace("\"", "\"\"") + "\"";
     }
 
-    // helpers
+    // (PRIVATE) helpers
     private RepositorySnapshot emptySnapshot() {
         return new RepositorySnapshot(
             new ArrayList<>(),
