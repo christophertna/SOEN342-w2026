@@ -1,0 +1,290 @@
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+
+ // CSV-backed implementation of TaskRepository
+ // Infrastructure layer, this is the only class allowed to read/write CSV files
+ // All CSV parsing and serialisation has been relocated to here from the original TaskSystem
+ 
+ // The repository is bound to a single CSV file whose path is provided at
+ // construction time (supplied by TaskSystem when prompting the user on startup)
+ 
+
+public class CsvTaskRepository implements TaskRepository {
+
+    private static final String[] CSV_HEADERS = {
+        "TaskName",
+        "Description",
+        "Subtask",
+        "Status",
+        "Priority",
+        "DueDate",
+        "ProjectName",
+        "ProjectDescription",
+        "Collaborator",
+        "CollaboratorCategory"
+    };
+
+    private final Path csvPath;
+
+    
+     // csvPath path to the CSV file used for both loading and saving.
+     // The file need not exist yet — save() will create it.
+     
+    public CsvTaskRepository(Path csvPath) {
+        this.csvPath = csvPath;
+    }
+
+    // TaskRepository loading
+
+    /*
+     * Reads the CSV file and returns a fully populated RepositorySnapshot.
+     *
+     * Behaviour:
+     *   - If the file does not exist, returns an empty snapshot (fresh start).
+     *   - Header row is detected and skipped automatically.
+     *   - Any row-level validation failure throws PersistenceException with
+     *     a message indicating the failing line number.
+     */
+
+    @Override
+    public RepositorySnapshot load() throws PersistenceException {
+        if (!Files.exists(csvPath)) {
+            System.out.println("No existing data file found at " + csvPath + ". Starting fresh.");
+            return emptySnapshot();
+        }
+
+        try {
+            List<String> lines = Files.readAllLines(csvPath);
+
+            if (lines.isEmpty()) {
+                return emptySnapshot();
+            }
+
+            List<Task>                        importedTasks         = new ArrayList<>();
+            Map<String, String>               importedProjects      = new LinkedHashMap<>();
+            Map<String, Map<String, String>>  importedCollaborators = new LinkedHashMap<>();
+
+            int startingLine = isHeaderRow(parseCsvLine(lines.get(0))) ? 1 : 0;
+
+            for (int i = startingLine; i < lines.size(); i++) {
+                String line = lines.get(i);
+                if (line.trim().isEmpty()) continue;
+
+                List<String> columns   = parseCsvLine(line);
+                int          lineNumber = i + 1;
+
+                if (columns.size() != CSV_HEADERS.length) {
+                    throw new PersistenceException(
+                        "Load failed on line " + lineNumber
+                        + ": expected " + CSV_HEADERS.length + " columns, found " + columns.size() + "."
+                    );
+                }
+
+                Task task = buildTaskFromColumns(
+                    columns,
+                    lineNumber,
+                    importedProjects,
+                    importedCollaborators,
+                    importedTasks.size() + 1
+                );
+
+                importedTasks.add(task);
+            }
+
+            System.out.println("Loaded " + importedTasks.size() + " task(s) from " + csvPath + ".");
+            return new RepositorySnapshot(importedTasks, importedProjects, importedCollaborators);
+
+        } catch (IOException | IllegalArgumentException e) {
+            throw new PersistenceException("Load failed: " + e.getMessage(), e);
+        }
+    }
+
+
+    // TaskRepository saving
+
+     // Writes the full in-memory state to the CSV file, overwriting any
+     // previous content & parent directories are created if necessary
+     
+    @Override
+    public void save(
+        List<Task> tasks,
+        Map<String, String> projects,
+        Map<String, Map<String, String>> collaboratorsByProject
+    ) throws PersistenceException {
+        try {
+            if (csvPath.getParent() != null) {
+                Files.createDirectories(csvPath.getParent());
+            }
+
+            List<String> outputLines = new ArrayList<>();
+            outputLines.add(String.join(",", CSV_HEADERS));
+
+            for (Task task : tasks) {
+                outputLines.add(toCsvLine(task.toCsvColumns()));
+            }
+
+            Files.write(csvPath, outputLines);
+            System.out.println("Saved " + tasks.size() + " task(s) to " + csvPath + ".");
+
+        } catch (IOException e) {
+            throw new PersistenceException("Save failed: " + e.getMessage(), e);
+        }
+    }
+
+    // Private — row building (relocated from TaskSystem)
+
+    private Task buildTaskFromColumns(
+        List<String> columns,
+        int lineNumber,
+        Map<String, String> importedProjects,
+        Map<String, Map<String, String>> importedCollaborators,
+        int taskId
+    ) throws PersistenceException {
+        String taskName             = columns.get(0).trim();
+        String description          = columns.get(1).trim();
+        String subtask              = columns.get(2).trim();
+        String status               = columns.get(3).trim();
+        String priority             = columns.get(4).trim();
+        String dueDateText          = columns.get(5).trim();
+        String projectName          = columns.get(6).trim();
+        String projectDescription   = columns.get(7).trim();
+        String collaborator         = columns.get(8).trim();
+        String collaboratorCategory = columns.get(9).trim();
+
+        if (taskName.isEmpty() || status.isEmpty() || priority.isEmpty() || dueDateText.isEmpty()) {
+            throw new PersistenceException(
+                "Load failed on line " + lineNumber
+                + ": TaskName, Status, Priority, and DueDate are required."
+            );
+        }
+
+        LocalDate dueDate;
+        try {
+            dueDate = LocalDate.parse(dueDateText);
+        } catch (DateTimeParseException e) {
+            throw new PersistenceException(
+                "Load failed on line " + lineNumber + ": DueDate must use yyyy-mm-dd."
+            );
+        }
+
+        if (projectName.isEmpty() && !projectDescription.isEmpty()) {
+            throw new PersistenceException(
+                "Load failed on line " + lineNumber + ": ProjectDescription requires ProjectName."
+            );
+        }
+
+        if (!projectName.isEmpty()) {
+            String existing = importedProjects.get(projectName);
+            if (existing != null && !existing.equals(projectDescription)) {
+                throw new PersistenceException(
+                    "Load failed on line " + lineNumber
+                    + ": project '" + projectName + "' has inconsistent descriptions."
+                );
+            }
+            importedProjects.putIfAbsent(projectName, projectDescription);
+        }
+
+        if (collaborator.isEmpty() != collaboratorCategory.isEmpty()) {
+            throw new PersistenceException(
+                "Load failed on line " + lineNumber
+                + ": Collaborator and CollaboratorCategory must be provided together."
+            );
+        }
+
+        if (!collaborator.isEmpty()) {
+            if (projectName.isEmpty()) {
+                throw new PersistenceException(
+                    "Load failed on line " + lineNumber
+                    + ": Collaborator entries must belong to a project."
+                );
+            }
+            Map<String, String> collaborators =
+                importedCollaborators.computeIfAbsent(projectName, k -> new LinkedHashMap<>());
+            String existingCategory = collaborators.get(collaborator);
+            if (existingCategory != null && !existingCategory.equalsIgnoreCase(collaboratorCategory)) {
+                throw new PersistenceException(
+                    "Load failed on line " + lineNumber
+                    + ": collaborator '" + collaborator + "' has inconsistent categories in project '"
+                    + projectName + "'."
+                );
+            }
+            collaborators.putIfAbsent(collaborator, collaboratorCategory);
+        }
+
+        return new Task(
+            taskId, taskName, description, subtask, status, priority,
+            dueDate, projectName, projectDescription, collaborator, collaboratorCategory
+        );
+    }
+
+
+    // Private — CSV parsing stuff (relocated from TaskSystem)
+
+    private boolean isHeaderRow(List<String> columns) {
+        return columns.size() == CSV_HEADERS.length
+            && columns.get(0).trim().equalsIgnoreCase(CSV_HEADERS[0]);
+    }
+
+    private List<String> parseCsvLine(String line) {
+        List<String>  columns        = new ArrayList<>();
+        StringBuilder currentValue   = new StringBuilder();
+        boolean       insideQuotes   = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+
+            if (c == '"') {
+                if (insideQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    currentValue.append('"');
+                    i++;
+                } else {
+                    insideQuotes = !insideQuotes;
+                }
+            } else if (c == ',' && !insideQuotes) {
+                columns.add(currentValue.toString());
+                currentValue.setLength(0);
+            } else {
+                currentValue.append(c);
+            }
+        }
+
+        if (insideQuotes) {
+            throw new IllegalArgumentException("CSV row contains unmatched quotes.");
+        }
+
+        columns.add(currentValue.toString());
+        return columns;
+    }
+
+    private String toCsvLine(String[] values) {
+        List<String> escaped = new ArrayList<>();
+        for (String value : values) {
+            escaped.add(escapeCsv(value));
+        }
+        return String.join(",", escaped);
+    }
+
+    private String escapeCsv(String value) {
+        String safe = value == null ? "" : value;
+        boolean needsQuotes = safe.contains(",") || safe.contains("\"") || safe.contains("\n");
+        if (!needsQuotes) return safe;
+        return "\"" + safe.replace("\"", "\"\"") + "\"";
+    }
+
+    // helpers
+    private RepositorySnapshot emptySnapshot() {
+        return new RepositorySnapshot(
+            new ArrayList<>(),
+            new LinkedHashMap<>(),
+            new LinkedHashMap<>()
+        );
+    }
+}
