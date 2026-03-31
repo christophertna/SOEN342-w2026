@@ -1,9 +1,9 @@
-import java.io.IOException;
-import java.nio.file.Files;
+// import java.io.IOException; will be moved to csv repository
+// import java.nio.file.Files; will be moved to csv repository
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
+// import java.time.format.DateTimeParseException; moved to csv repository
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -14,7 +14,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class TaskSystem {
-    private static final String[] CSV_HEADERS = {
+
+    // will be moved to csv repository
+    /* private static final String[] CSV_HEADERS = {
         "TaskName",
         "Description",
         "Subtask",
@@ -25,22 +27,52 @@ public class TaskSystem {
         "ProjectDescription",
         "Collaborator",
         "CollaboratorCategory"
-    };
-
+    }; */
+    
+    private static ICalGateway icalGateway = new ICalGatewayImpl(); // new iCal integration
     private static final List<Task> taskDatabase = new ArrayList<>();
     private static final Map<String, String> projects = new LinkedHashMap<>();
     private static final Map<String, Map<String, String>> collaboratorsByProject = new LinkedHashMap<>();
 
+    private static TaskRepository repository; // new task repository instance
+
+
 public static void main(String[] args) {
         try (Scanner scanner = new Scanner(System.in)) {
+
+            // user must first manually enter the file path
+             Path csvPath = promptForCsvPath(scanner);
+            repository   = new CsvTaskRepository(csvPath); // new repository from given path
+
+            // load
+              try {
+                RepositorySnapshot snapshot = repository.load();
+                taskDatabase.addAll(snapshot.getTasks());
+                projects.putAll(snapshot.getProjects());
+                collaboratorsByProject.putAll(snapshot.getCollaboratorsByProject());
+            } catch (PersistenceException e) {
+                System.out.println("Startup error: " + e.getMessage());
+                System.out.println("The system will start with an empty dataset.");
+            }
+
+
+            // save and exit after
+               Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    repository.save(taskDatabase, projects, collaboratorsByProject);
+                } catch (PersistenceException e) {
+                    System.out.println("Warning: data could not be saved — " + e.getMessage());
+                }
+            }));
+        
             while (true) {
-                System.out.println("\n--- TASK MANAGEMENT SYSTEM (ITERATION III) ---");
+                System.out.println("\n--- TASK MANAGEMENT SYSTEM ---");
                 System.out.println("1. View All Tasks");
                 System.out.println("2. Search Tasks by Criteria");
                 System.out.println("3. View Overloaded Collaborators"); // new option to check overloaded collaborators (to be implemented)
                 System.out.println("4. Export to iCalendar (.ics)");    // New option to export to iCal (to be implemented)
-                System.out.println("5. Import/Export CSV (Legacy)");
-                System.out.println("6. Exit");
+                // System.out.println("5. Import/Export CSV (Legacy)"); 
+                System.out.println("5. Exit");
                 System.out.print("Select an option: ");
 
                 String choice = scanner.nextLine().trim();
@@ -50,10 +82,33 @@ public static void main(String[] args) {
                     case "2": performSearch(scanner); break;
                     case "3": viewOverloadedCollaborators(); break; // new option To be implemented 
                     case "4": showExportMenu(scanner); break;       // new UI Logic to be implemented
-                    case "5": showLegacyCsvMenu(scanner); break;
-                    case "6": return;
+                    // case "5": showLegacyCsvMenu(scanner); break;
+                    case "5": return;
                     default: System.out.println("Invalid option.");
                 }
+            }
+        }
+    }
+
+    // asks user for CSV file path on bootup 
+    // can accept a non-existent path, since save() will create the file
+    // loops until a non-empty, correct valid path is entered
+     private static Path promptForCsvPath(Scanner scanner) {
+        while (true) {
+            System.out.print("Enter data file path (e.g. tasks.csv): ");
+            String input = scanner.nextLine().trim();
+ 
+            if (input.isEmpty()) {
+                System.out.println("A file path is required.");
+                continue;
+            }
+ 
+            try {
+                Path path = Paths.get(input).normalize();
+                System.out.println("Using data file: " + path);
+                return path;
+            } catch (Exception e) {
+                System.out.println("Invalid path: " + e.getMessage());
             }
         }
     }
@@ -130,7 +185,8 @@ public static void main(String[] args) {
         displayTasks(results);
     }
 
-    private static void importFromCsv(Scanner scanner) {
+    // method will be moved to csv repository file
+    /* private static void importFromCsv(Scanner scanner) {
         Path sourcePath = promptForCsvPath(scanner, "Enter CSV source file path: ", true);
         if (sourcePath == null) {
             System.out.println("Import cancelled: a file path is required.");
@@ -189,8 +245,10 @@ public static void main(String[] args) {
             System.out.println("Import failed: " + exception.getMessage());
         }
     }
+    */
 
-    private static void exportToCsv(Scanner scanner) {
+    // method will be moved to csv repository file
+    /* private static void exportToCsv(Scanner scanner) {
         Path destinationPath = promptForCsvPath(scanner, "Enter destination CSV file path: ", false);
         if (destinationPath == null) {
             System.out.println("Export cancelled: a file path is required.");
@@ -215,6 +273,7 @@ public static void main(String[] args) {
             System.out.println("Export failed: " + exception.getMessage());
         }
     }
+    */
 
     private static Path promptForCsvPath(Scanner scanner, String prompt, boolean mustExist) {
         while (true) {
@@ -292,8 +351,9 @@ public static void main(String[] args) {
         String trailingText = userInput.substring(extensionIndex + 4).trim();
         return !trailingText.isEmpty();
     }
-
-    private static Task buildTaskFromColumns(
+    
+    // method will be moved to csv repository file
+    /* private static Task buildTaskFromColumns(
         List<String> columns,
         int lineNumber,
         Map<String, String> importedProjects,
@@ -315,6 +375,7 @@ public static void main(String[] args) {
             System.out.println("Import failed on line " + lineNumber + ": TaskName, Status, Priority, and DueDate are required.");
             return null;
         }
+        */
 
         LocalDate dueDate;
         try {
@@ -413,11 +474,14 @@ public static void main(String[] args) {
         }
     }
 
-    private static boolean isHeaderRow(List<String> columns) {
+    // method will be moved to csv repository file
+    /* private static boolean isHeaderRow(List<String> columns) {
         return columns.size() == CSV_HEADERS.length && columns.get(0).trim().equalsIgnoreCase(CSV_HEADERS[0]);
     }
+    
 
-    private static List<String> parseCsvLine(String line) {
+    // method will be moved to csv repository file
+       private static List<String> parseCsvLine(String line) {
         List<String> columns = new ArrayList<>();
         StringBuilder currentValue = new StringBuilder();
         boolean insideQuotes = false;
@@ -447,16 +511,20 @@ public static void main(String[] args) {
         columns.add(currentValue.toString());
         return columns;
     }
+    */
 
-    private static String toCsvLine(String[] values) {
+    // method will be moved to csv repository file
+    /* private static String toCsvLine(String[] values) {
         List<String> escapedValues = new ArrayList<>();
         for (String value : values) {
             escapedValues.add(escapeCsv(value));
         }
         return String.join(",", escapedValues);
     }
+    */
 
-    private static String escapeCsv(String value) {
+    // method will be moved to csv repository file
+    /* private static String escapeCsv(String value) {
         String safeValue = value == null ? "" : value;
         boolean needsQuotes = safeValue.contains(",") || safeValue.contains("\"") || safeValue.contains("\n");
 
@@ -467,6 +535,7 @@ public static void main(String[] args) {
         return "\"" + safeValue.replace("\"", "\"\"") + "\"";
     }
 }
+    */
 
 class Task {
     private final int id;
