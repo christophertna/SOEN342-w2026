@@ -1,1 +1,22 @@
 
+import java.util.List;
+import java.util.Map;
+
+// Repository interface for Task persistence.
+
+public interface TaskRepository {
+
+    // Loads all tasks, projects, and collaborator mappings from the
+    // underlying store and returns them as a single snapshot.
+
+    RepositorySnapshot load() throws PersistenceException;
+
+    // Persists the current in-memory state to the underlying store,
+    // replacing whatever was there before.
+    
+    void save(
+        List<Task> tasks,
+        Map<String, String> projects,
+        Map<String, Map<String, String>> collaboratorsByProject
+    ) throws PersistenceException;
+}
