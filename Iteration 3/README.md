@@ -55,3 +55,13 @@ CSV import/export is still available from the menu for the iteration 2 requireme
 - `Junior`: 10 open assignments
 - `Intermediate`: 5 open assignments
 - `Senior`: 2 open assignments
+
+## Included Iteration 3 Artifacts
+
+This folder currently includes the following iteration 3 deliverables:
+
+- `Use case diagram FINAL.pdf`
+- `UML class diagram Iteration 3 updated.pdf`
+- `Iteration 3 SSD export functionality.pdf`
+- `OCL constraints.pdf`
+- `README.md`
