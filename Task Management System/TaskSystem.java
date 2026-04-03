@@ -27,6 +27,9 @@ public class TaskSystem {
             .thenComparing(record -> record.task().getId());
 
     private static TaskRepository repository;
+    private static boolean isOpenCollaboratorAssignment(Subtask subtask) {
+        return subtask.isCollaboratorLinked() && !subtask.isCompleted();
+    }
 
     public static void main(String[] args) {
         try (Scanner scanner = new Scanner(System.in)) {
@@ -995,24 +998,23 @@ public class TaskSystem {
     }
 
     private static int countOpenAssignmentsForCollaborator(String collaboratorName) {
-        int count = 0;
+    int count = 0;
         for (Task task : TASKS) {
             for (Subtask subtask : task.getSubtasks()) {
-                if (subtask.isCollaboratorLinked()
-                    && !subtask.isCompleted()
-                    && subtask.getCollaboratorName().equalsIgnoreCase(collaboratorName)) {
-                    count++;
-                }
+                if (isOpenCollaboratorAssignment(subtask)
+                && subtask.getCollaboratorName().equalsIgnoreCase(collaboratorName)) {
+                count++;
             }
         }
-        return count;
     }
+    return count;
+}
 
     private static Map<String, CollaboratorLoad> calculateCollaboratorLoads() {
         Map<String, CollaboratorLoad> loads = new LinkedHashMap<>();
         for (Task task : TASKS) {
             for (Subtask subtask : task.getSubtasks()) {
-                if (!subtask.isCollaboratorLinked() || subtask.isCompleted()) {
+                if (!isOpenCollaboratorAssignment(subtask)) {
                     continue;
                 }
 

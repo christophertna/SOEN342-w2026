@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Task implements Serializable {
 
@@ -144,13 +145,7 @@ public class Task implements Serializable {
     }
 
     public boolean removeTag(String tag) {
-        for (int i = 0; i < tags.size(); i++) {
-            if (tags.get(i).equalsIgnoreCase(tag)) {
-                tags.remove(i);
-                return true;
-            }
-        }
-        return false;
+        return tags.removeIf(existing -> existing.equalsIgnoreCase(tag));
     }
 
     public List<Subtask> getSubtasks() {
@@ -226,7 +221,7 @@ public class Task implements Serializable {
     }
 
     public boolean hasOccurrenceOn(LocalDate date) {
-        return getOccurrenceDates().contains(date);
+        return date != null && getOccurrenceDates().contains(date);
     }
 
     public String getStatusForDate(LocalDate date) {
@@ -282,31 +277,27 @@ public class Task implements Serializable {
     }
 
     public String getCollaboratorSummary() {
-        return subtasks.stream()
-            .filter(Subtask::isCollaboratorLinked)
+        return collaboratorSubtasks()
             .map(Subtask::getCollaboratorName)
             .distinct()
             .collect(Collectors.joining("; "));
     }
 
     public String getCollaboratorCategorySummary() {
-        Set<String> categories = new LinkedHashSet<>();
-        for (Subtask subtask : subtasks) {
-            if (subtask.isCollaboratorLinked()) {
-                categories.add(subtask.getCollaboratorCategory());
-            }
-        }
-        return String.join("; ", categories);
+        return collaboratorSubtasks()
+            .map(Subtask::getCollaboratorCategory)
+            .distinct()
+            .collect(Collectors.joining("; "));
     }
 
     public int countOpenCollaboratorAssignments() {
-        int count = 0;
-        for (Subtask subtask : subtasks) {
-            if (subtask.isCollaboratorLinked() && !subtask.isCompleted()) {
-                count++;
-            }
-        }
-        return count;
+        return (int) collaboratorSubtasks()
+            .filter(subtask -> !subtask.isCompleted())
+            .count();
+    }
+
+    private Stream<Subtask> collaboratorSubtasks() {
+        return subtasks.stream().filter(Subtask::isCollaboratorLinked);
     }
 
     private void retainOnlyValidOccurrenceStatuses() {
