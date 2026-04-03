@@ -1,12 +1,16 @@
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-public class CsvTaskRepository implements TaskRepository {
+public class CsvTaskRepository {
 
     private static final String[] CSV_HEADERS = {
         "TaskName",
@@ -27,20 +31,20 @@ public class CsvTaskRepository implements TaskRepository {
         this.csvPath = csvPath;
     }
 
-    @Override
     public RepositorySnapshot load() throws PersistenceException {
         if (!Files.exists(csvPath)) {
-            return new RepositorySnapshot(new ArrayList<>());
+            return new RepositorySnapshot(new ArrayList<>(), new ArrayList<>());
         }
 
         try {
             List<String> lines = Files.readAllLines(csvPath);
             if (lines.isEmpty()) {
-                return new RepositorySnapshot(new ArrayList<>());
+                return new RepositorySnapshot(new ArrayList<>(), new ArrayList<>());
             }
 
             List<Task> tasks = new ArrayList<>();
-            int startIndex = isHeaderRow(parseCsvLine(lines.get(0))) ? 1 : 0;
+            Map<String, Project> projects = new LinkedHashMap<>();
+            int startIndex = isCsvHeader(lines.get(0)) ? 1 : 0;
 
             for (int i = startIndex; i < lines.size(); i++) {
                 String line = lines.get(i);
@@ -55,17 +59,16 @@ public class CsvTaskRepository implements TaskRepository {
                     );
                 }
 
-                tasks.add(buildTask(columns, tasks.size() + 1, i + 1));
+                tasks.add(buildTask(columns, tasks.size() + 1, i + 1, projects));
             }
 
-            return new RepositorySnapshot(tasks);
+            return new RepositorySnapshot(tasks, new ArrayList<>(projects.values()));
         } catch (IOException exception) {
             throw new PersistenceException("Load failed: " + exception.getMessage(), exception);
         }
     }
 
-    @Override
-    public void save(List<Task> tasks) throws PersistenceException {
+    public void save(List<TaskView> rows) throws PersistenceException {
         try {
             if (csvPath.getParent() != null) {
                 Files.createDirectories(csvPath.getParent());
@@ -73,21 +76,27 @@ public class CsvTaskRepository implements TaskRepository {
 
             List<String> outputLines = new ArrayList<>();
             outputLines.add(String.join(",", CSV_HEADERS));
-            for (Task task : tasks) {
-                outputLines.add(toCsvLine(task.toCsvColumns()));
+            for (TaskView row : rows) {
+                outputLines.add(toCsvLine(row.toCsvColumns()));
             }
 
-            Files.write(csvPath, outputLines);
+            Files.write(csvPath, outputLines, StandardCharsets.UTF_8);
         } catch (IOException exception) {
             throw new PersistenceException("Save failed: " + exception.getMessage(), exception);
         }
     }
 
-    private Task buildTask(List<String> columns, int taskId, int lineNumber) {
+    public static boolean isCsvHeader(String line) {
+        List<String> columns = parseCsvLine(line);
+        return columns.size() == CSV_HEADERS.length
+            && columns.get(0).trim().equalsIgnoreCase(CSV_HEADERS[0]);
+    }
+
+    private Task buildTask(List<String> columns, int taskId, int lineNumber, Map<String, Project> projects) {
         String taskName = columns.get(0).trim();
         String description = columns.get(1).trim();
         String subtaskValue = columns.get(2).trim();
-        String status = columns.get(3).trim();
+        String status = normalizeStatus(columns.get(3).trim());
         String priority = columns.get(4).trim();
         String dueDateValue = columns.get(5).trim();
         String projectName = columns.get(6).trim();
@@ -124,27 +133,67 @@ public class CsvTaskRepository implements TaskRepository {
             }
         }
 
-        return new Task(
+        Task task = new Task(
             taskId,
             taskName,
             description,
-            Task.parseSubtasks(subtaskValue),
-            status,
+            LocalDateTime.now(),
             priority,
+            status,
             dueDate,
+            null,
             projectName,
-            projectDescription,
-            collaborator,
-            collaboratorCategory
+            new ArrayList<>(),
+            new ArrayList<>(),
+            new ArrayList<>(),
+            new LinkedHashMap<>()
         );
+        task.addActivity("Imported from CSV.");
+
+        int subtaskId = 1;
+        for (String part : splitSubtasks(subtaskValue)) {
+            task.addLoadedSubtask(Subtask.fromStorageString(subtaskId++, part));
+        }
+
+        if (!projectName.isEmpty()) {
+            Project project = projects.computeIfAbsent(Project.key(projectName), key -> new Project(projectName, projectDescription));
+            if (project.getDescription().isEmpty() && !projectDescription.isEmpty()) {
+                project.setDescription(projectDescription);
+            }
+
+            if (!collaborator.isEmpty()) {
+                Collaborator collaboratorRecord = project.addOrUpdateCollaborator(collaborator, collaboratorCategory);
+                task.addCollaboratorSubtask(collaboratorRecord);
+                task.addActivity("Collaborator linked from CSV import: " + collaboratorRecord.getName() + ".");
+            }
+        }
+
+        return task;
     }
 
-    private boolean isHeaderRow(List<String> columns) {
-        return columns.size() == CSV_HEADERS.length
-            && columns.get(0).trim().equalsIgnoreCase(CSV_HEADERS[0]);
+    private static List<String> splitSubtasks(String rawValue) {
+        List<String> values = new ArrayList<>();
+        if (rawValue == null || rawValue.trim().isEmpty()) {
+            return values;
+        }
+
+        String normalized = rawValue.replace("\\n", "\n");
+        for (String line : normalized.split("\\R")) {
+            if (!line.trim().isEmpty()) {
+                values.add(line.trim());
+            }
+        }
+        return values;
     }
 
-    private List<String> parseCsvLine(String line) {
+    private static String normalizeStatus(String status) {
+        if (status.equalsIgnoreCase("Pending")) {
+            return "Open";
+        }
+        return status;
+    }
+
+    private static List<String> parseCsvLine(String line) {
         List<String> columns = new ArrayList<>();
         StringBuilder currentValue = new StringBuilder();
         boolean insideQuotes = false;

@@ -14,10 +14,10 @@ public class ICalGatewayImpl implements ICalGateway {
     private static final DateTimeFormatter ICAL_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'");
 
     @Override
-    public void exportTasks(List<Task> tasks, Path destinationPath) throws ICalExportException {
-        List<Task> eligibleTasks = new ArrayList<>();
-        for (Task task : tasks) {
-            if (task.hasDueDate()) {
+    public void exportTasks(List<TaskView> tasks, Path destinationPath) throws ICalExportException {
+        List<TaskView> eligibleTasks = new ArrayList<>();
+        for (TaskView task : tasks) {
+            if (task.getDueDate() != null) {
                 eligibleTasks.add(task);
             }
         }
@@ -33,9 +33,9 @@ public class ICalGatewayImpl implements ICalGateway {
         lines.add("CALSCALE:GREGORIAN");
 
         String timestamp = OffsetDateTime.now(ZoneOffset.UTC).format(ICAL_TIMESTAMP);
-        for (Task task : eligibleTasks) {
+        for (TaskView task : eligibleTasks) {
             lines.add("BEGIN:VEVENT");
-            lines.add("UID:task-" + task.getId() + "@soen342.local");
+            lines.add("UID:task-" + task.getTaskId() + "-" + formatDate(task.getDueDate()) + "@soen342.local");
             lines.add("DTSTAMP:" + timestamp);
             lines.add("DTSTART;VALUE=DATE:" + formatDate(task.getDueDate()));
             lines.add("SUMMARY:" + escapeText(task.getTaskName()));
@@ -56,7 +56,7 @@ public class ICalGatewayImpl implements ICalGateway {
         }
     }
 
-    private String buildDescription(Task task) {
+    private String buildDescription(TaskView task) {
         StringBuilder builder = new StringBuilder();
 
         if (!isBlank(task.getDescription())) {
@@ -70,10 +70,12 @@ public class ICalGatewayImpl implements ICalGateway {
             appendLine(builder, "Project: " + task.getProjectName());
         }
 
-        if (!task.getSubtasks().isEmpty()) {
+        if (!isBlank(task.getSubtaskSummary())) {
             appendLine(builder, "Subtasks:");
-            for (Subtask subtask : task.getSubtasks()) {
-                appendLine(builder, "- " + subtask.toDisplayString());
+            for (String subtask : task.getSubtaskSummary().split("\\s*\\|\\s*")) {
+                if (!subtask.isBlank()) {
+                    appendLine(builder, "- " + subtask.trim());
+                }
             }
         }
 
@@ -92,19 +94,10 @@ public class ICalGatewayImpl implements ICalGateway {
     }
 
     private String mapStatus(String status) {
-        if (status == null) {
-            return "TENTATIVE";
-        }
-
-        if (status.equalsIgnoreCase("Completed") || status.equalsIgnoreCase("Cancelled")) {
+        if (status != null && status.equalsIgnoreCase("Cancelled")) {
             return "CANCELLED";
         }
-
-        if (status.equalsIgnoreCase("In Progress")) {
-            return "CONFIRMED";
-        }
-
-        return "TENTATIVE";
+        return "CONFIRMED";
     }
 
     private String escapeText(String value) {
