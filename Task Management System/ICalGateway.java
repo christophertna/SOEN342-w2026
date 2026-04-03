@@ -3,5 +3,5 @@ import java.util.List;
 
 public interface ICalGateway {
 
-    void exportTasks(List<Task> tasks, Path destinationPath) throws ICalExportException;
+    void exportTasks(List<TaskView> tasks, Path destinationPath) throws ICalExportException;
 }

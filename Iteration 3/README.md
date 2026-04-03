@@ -1,19 +1,37 @@
 # Iteration 3
 
-This folder contains the final cumulative system for the software side of the project, with the iteration 2 prototype functionality carried forward into iteration 3. The OCL deliverable is excluded here.
+This folder contains the final cumulative Java task management system for iterations 1 to 3.
 
-## Implemented Features
+## Implemented Requirements
 
-- Persistent storage through a CSV-backed repository layer.
-- Menu-driven task management with create, edit, delete, view, search, and subtask management flows.
-- Import from CSV and export to CSV, preserving the prototype functionality from iteration 2.
-- Overloaded collaborator reporting based on category task limits.
-- iCalendar (`.ics`) export for:
-  - a single task,
-  - all tasks in a project,
-  - a filtered task list.
-- Export ignores tasks without due dates, as required.
-- Export includes task title, description, due date, status, priority, project name, and subtask summary.
+- Task lifecycle support:
+  - create, update, complete, cancel, reopen, delete, and view tasks
+  - task activity history
+- Recurring task support:
+  - daily, weekly, monthly, and custom recurrence
+  - generated occurrences over a start/end range
+  - completing one occurrence does not complete future occurrences
+  - unique task name and due-date combinations
+- Project and collaboration support:
+  - create/manage projects
+  - assign tasks to projects
+  - link collaborators to project tasks
+  - collaborator linking automatically creates a linked subtask
+  - overloaded collaborator reporting using the required limits
+- Subtask and tag support:
+  - add, complete, reopen, and remove subtasks
+  - add and remove tags
+- Search and filtering:
+  - keyword, status, priority, project, collaborator, collaborator category, tag
+  - day-of-week and period filtering
+  - if no criteria are supplied, all open tasks are listed
+- Data exchange:
+  - import tasks from CSV
+  - export the database or filtered results to CSV
+  - export a single task, all tasks in a project, or filtered tasks to iCalendar (`.ics`)
+  - tasks without due dates are ignored during iCalendar export
+- Persistence:
+  - the full domain is persisted through the application persistence layer
 
 ## Source Location
 
@@ -28,14 +46,12 @@ javac *.java
 java TaskSystem
 ```
 
-At startup, provide the path to the CSV data file to load/save task data.
+At startup, provide a persistence file path such as `data.ptms`.
+
+CSV import/export is still available from the menu for the iteration 2 requirements.
 
 ## Collaborator Limits
 
-The collaborator limits now match the iteration 2 specification:
-
-- `Junior`: 10 open tasks
-- `Intermediate`: 5 open tasks
-- `Senior`: 2 open tasks
-
-These values are defined in `TaskSystem.java`.
+- `Junior`: 10 open assignments
+- `Intermediate`: 5 open assignments
+- `Senior`: 2 open assignments
