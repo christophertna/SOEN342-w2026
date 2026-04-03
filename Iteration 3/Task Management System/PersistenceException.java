@@ -1,5 +1,3 @@
-// Unchecked exception thrown by TaskRepository implementations.
-
 public class PersistenceException extends RuntimeException {
 
     public PersistenceException(String message) {
