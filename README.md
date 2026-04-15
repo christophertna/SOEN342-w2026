@@ -27,7 +27,7 @@ javac *.java
 java TaskSystem
 ```
 
-When the application starts, enter a persistence file path such as:
+When the application starts, enter a persistence file path , you could use this one:
 
 ```text
 data.ptms
