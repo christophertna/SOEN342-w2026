@@ -1,6 +1,8 @@
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -50,7 +52,14 @@ public class ICalGatewayImpl implements ICalGateway {
             if (destinationPath.getParent() != null) {
                 Files.createDirectories(destinationPath.getParent());
             }
-            Files.write(destinationPath, lines);
+            Files.write(
+                destinationPath,
+                lines,
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE
+            );
         } catch (IOException exception) {
             throw new ICalExportException("Could not write .ics file: " + exception.getMessage(), exception);
         }

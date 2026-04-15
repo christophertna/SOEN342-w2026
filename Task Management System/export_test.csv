@@ -1,0 +1,6 @@
+TaskName,Description,Subtask,Status,Priority,DueDate,ProjectName,ProjectDescription,Collaborator,CollaboratorCategory
+Implement CSV import,Load tasks from a source file,[ ] Validate required fields | [ ] Collaborate: Alice -> Alice (Senior),Open,High,2026-03-24,Iteration 2,SOEN 342 iteration 2 prototype,Alice,Senior
+Implement CSV export,Write all records to a file,[ ] Escape values safely | [ ] Collaborate: Bob -> Bob (Junior),Open,Medium,2026-03-25,Iteration 2,SOEN 342 iteration 2 prototype,Bob,Junior
+Review imported tasks,Check generated records,,Completed,Low,2026-03-26,,,,
+RECORD VIDEO TEST,PILOT VIDEO NONE,,Open,Low,2026-05-12,KIQWW,NONE,,
+REVAMPING CONTENT,REVAMPING CONTENT,,Completed,High,2026-07-23,LER,LER,,

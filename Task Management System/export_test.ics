@@ -1,0 +1,13 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//SOEN342//Task Management System//EN
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:task-1-20260324@soen342.local
+DTSTAMP:20260415T221836Z
+DTSTART;VALUE=DATE:20260324
+SUMMARY:Implement CSV import
+DESCRIPTION:Description: Load tasks from a source file\nStatus: Open\nPriority: High\nProject: Iteration 2\nSubtasks:\n- [ ] Validate required fields\n- [ ] Collaborate: Alice -> Alice (Senior)
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR

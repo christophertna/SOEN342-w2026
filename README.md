@@ -11,7 +11,15 @@
 
 The runnable Java application is in `Task Management System/`.
 
-From the `SOEN342-w2026` folder, run:
+From PowerShell, go to that folder (adjust the path if your clone is not on the Desktop), then compile and run:
+
+```powershell
+cd "C:\Users\sobhy\Desktop\SOEN 342 UPDATES\SOEN342-w2026\Task Management System"
+javac *.java
+java TaskSystem
+```
+
+If you are already in the `SOEN342-w2026` folder, you can use:
 
 ```powershell
 cd "Task Management System"

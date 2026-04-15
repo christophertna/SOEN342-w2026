@@ -583,15 +583,19 @@ public class TaskSystem {
 
     private static void searchAndDisplay(Scanner scanner) {
         System.out.println("\n--- SEARCH / FILTER TASKS ---");
-        displayTaskRecords(searchTaskRecords(scanner));
+        displayTaskRecords(searchTaskRecords(scanner, true));
     }
 
-    private static List<TaskRecord> searchTaskRecords(Scanner scanner) {
+    /**
+     * @param openOnlyWhenNoCriteria when true and every filter is blank, only non-closed tasks are listed (search UI).
+     *        When false, blank filters mean no extra restriction (used for export so "filtered" can mean all tasks).
+     */
+    private static List<TaskRecord> searchTaskRecords(Scanner scanner, boolean openOnlyWhenNoCriteria) {
         SearchCriteria criteria = collectSearchCriteria(scanner);
         boolean noCriteria = criteria.isEmpty();
 
         return buildTaskRecords(TASKS).stream()
-            .filter(record -> !noCriteria || isOpenStatus(record.status()))
+            .filter(record -> !noCriteria || !openOnlyWhenNoCriteria || isOpenStatus(record.status()))
             .filter(record -> criteria.keyword.isBlank() || record.task().matchesKeyword(criteria.keyword))
             .filter(record -> criteria.status.isBlank() || equalsIgnoreCase(record.status(), criteria.status))
             .filter(record -> criteria.priority.isBlank() || equalsIgnoreCase(record.task().getPriority(), criteria.priority))
@@ -712,7 +716,10 @@ public class TaskSystem {
                     .collect(Collectors.toList());
                 selectedViews = buildTaskViews(buildTaskRecords(projectTasks));
             }
-            case "3" -> selectedViews = buildTaskViews(searchTaskRecords(scanner));
+            case "3" -> {
+                System.out.println("Leave all filter prompts blank to include every task.");
+                selectedViews = buildTaskViews(searchTaskRecords(scanner, false));
+            }
             default -> {
                 System.out.println("Invalid option.");
                 return;
@@ -724,14 +731,19 @@ public class TaskSystem {
             .collect(Collectors.toList());
 
         if (eligibleTasks.isEmpty()) {
-            System.out.println("No eligible tasks found. Tasks without due dates are ignored.");
+            System.out.println(
+                "No .ics entries to write: iCalendar export only includes rows that have a due date "
+                    + "(one-off tasks and recurring occurrences). Add due dates or pick a different scope."
+            );
             return;
         }
 
         Path destinationPath = promptForPath(scanner, "Destination .ics file path: ");
         try {
             ICAL_GATEWAY.exportTasks(eligibleTasks, destinationPath);
-            System.out.println("Exported " + eligibleTasks.size() + " calendar entries.");
+            Path absolute = destinationPath.toAbsolutePath().normalize();
+            System.out.println("Exported " + eligibleTasks.size() + " calendar entries to:");
+            System.out.println(absolute);
         } catch (ICalExportException exception) {
             System.out.println("Export failed: " + exception.getMessage());
         }
@@ -818,7 +830,10 @@ public class TaskSystem {
         List<TaskView> rows;
         switch (scanner.nextLine().trim()) {
             case "1" -> rows = buildTaskViews(buildTaskRecords(TASKS));
-            case "2" -> rows = buildTaskViews(searchTaskRecords(scanner));
+            case "2" -> {
+                System.out.println("Leave all filter prompts blank to include every task.");
+                rows = buildTaskViews(searchTaskRecords(scanner, false));
+            }
             default -> {
                 System.out.println("Invalid option.");
                 return;
@@ -828,7 +843,9 @@ public class TaskSystem {
         Path destinationPath = promptForPath(scanner, "Destination CSV file path: ");
         try {
             new CsvTaskRepository(destinationPath).save(rows);
-            System.out.println("Exported " + rows.size() + " row(s) to CSV.");
+            Path absolute = destinationPath.toAbsolutePath().normalize();
+            System.out.println("Exported " + rows.size() + " row(s) to CSV:");
+            System.out.println(absolute);
         } catch (PersistenceException exception) {
             System.out.println("Export failed: " + exception.getMessage());
         }
