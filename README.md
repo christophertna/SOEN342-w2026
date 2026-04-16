@@ -32,3 +32,6 @@ When the application starts, enter a persistence file path , you could use this 
 ```text
 data.ptms
 ```
+
+# Note
+We are unsure wether or not to leave the previous iterations' work in the repository or not, so just to be safe we decided to leave them in their respective folders. 
